@@ -7,24 +7,39 @@ from pydantic import BaseModel
 
 KOKORO_URL = os.getenv("KOKORO_URL", "http://kokoro:8880")
 PIPER_URL = os.getenv("PIPER_URL", "http://piper:5000")
-MELO_URL = os.getenv("MELO_URL", "http://melotts:5000")
 
-# Catalogo de motores y voces en ingles disponibles para comparar.
+# Catalogo de motores y voces en ingles. Cada voz: {"id": <valor real>, "label": <texto>}.
 ENGINES = {
     "kokoro": {
         "label": "Kokoro — natural (recomendado)",
-        "voices": ["af_heart", "af_bella", "am_michael", "bm_george", "bf_emma"],
+        "voices": [
+            {"id": "af_heart", "label": "US ♀ Heart"},
+            {"id": "af_bella", "label": "US ♀ Bella"},
+            {"id": "af_nicole", "label": "US ♀ Nicole"},
+            {"id": "af_sarah", "label": "US ♀ Sarah"},
+            {"id": "af_sky", "label": "US ♀ Sky"},
+            {"id": "af_aoede", "label": "US ♀ Aoede"},
+            {"id": "am_michael", "label": "US ♂ Michael"},
+            {"id": "am_adam", "label": "US ♂ Adam"},
+            {"id": "am_echo", "label": "US ♂ Echo"},
+            {"id": "am_liam", "label": "US ♂ Liam"},
+            {"id": "bf_emma", "label": "UK ♀ Emma"},
+            {"id": "bf_isabella", "label": "UK ♀ Isabella"},
+            {"id": "bf_alice", "label": "UK ♀ Alice"},
+            {"id": "bm_george", "label": "UK ♂ George"},
+            {"id": "bm_lewis", "label": "UK ♂ Lewis"},
+            {"id": "bm_daniel", "label": "UK ♂ Daniel"},
+        ],
     },
     "piper": {
         "label": "Piper — ultraligero / rapido",
-        "voices": ["lessac"],
+        "voices": [
+            {"id": "lessac", "label": "US ♀ Lessac"},
+            {"id": "ryan", "label": "US ♂ Ryan"},
+            {"id": "alba", "label": "UK ♀ Alba"},
+            {"id": "northern_male", "label": "UK ♂ Northern"},
+        ],
     },
-    # MeloTTS desactivado temporalmente (build CUDA inestable). Reactivar junto
-    # con el servicio melotts en docker-compose.yml cuando quede estable:
-    # "melotts": {
-    #     "label": "MeloTTS — buena calidad en CPU",
-    #     "voices": ["EN-US", "EN-BR", "EN-Default", "EN-AU"],
-    # },
 }
 
 app = FastAPI(title="TTS Lab")
@@ -60,13 +75,8 @@ async def tts(r: TTSReq):
                     "response_format": "wav",
                 },
             )
-        elif r.engine == "piper":
-            resp = await c.post(f"{PIPER_URL}/tts", json={"text": r.text})
-        else:  # melotts
-            resp = await c.post(
-                f"{MELO_URL}/tts",
-                json={"text": r.text, "voice": r.voice or "EN-US"},
-            )
+        else:  # piper
+            resp = await c.post(f"{PIPER_URL}/tts", json={"text": r.text, "voice": r.voice})
 
     if resp.status_code != 200:
         raise HTTPException(502, f"{r.engine} fallo: {resp.text[:200]}")

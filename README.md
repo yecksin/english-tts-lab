@@ -6,9 +6,8 @@ suena mejor para practicar *listening*. Pensado para correr en un VPS **sin GPU*
 
 ## Qué trae
 
-- **Kokoro** — voz más natural, ligera (recomendado).
-- **Piper** — ultraligero y rápido, baseline.
-- **MeloTTS** — buena calidad en CPU, varias voces (US/BR/AU).
+- **Kokoro** — voz más natural, ligera (recomendado). ~16 voces US/UK, hombre/mujer.
+- **Piper** — ultraligero y rápido. 4 voces US/UK, hombre/mujer.
 - **Front web** en `:8080` para escribir texto y comparar A/B (un solo puerto expuesto).
 
 No expone API pública ni nada extra: solo el front interno detrás del gateway.
@@ -24,8 +23,7 @@ docker compose up -d --build
 
 Luego abre: `http://IP_DEL_VPS:8080`
 
-> ⚠️ El **primer build tarda** (descarga torch CPU + modelos). MeloTTS es el más
-> pesado de construir. Kokoro y Piper levantan rápido.
+> El build es rápido: Kokoro usa imagen prearmada y Piper solo descarga 4 voces.
 
 ## Comandos útiles
 

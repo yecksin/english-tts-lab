@@ -4,16 +4,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     && rm -rf /var/lib/apt/lists/*
 RUN pip install --no-cache-dir piper-tts fastapi "uvicorn[standard]"
 
-# Voz en ingles (US, calidad media). Se descarga con curl -fL:
-#  -f = falla si HTTP >=400 (no guarda paginas de error como si fueran el modelo)
-#  -L = sigue redirects (necesario para los archivos de Git LFS de HuggingFace)
-RUN mkdir -p /models && \
-    curl -fL -o /models/en_US-lessac-medium.onnx \
-      "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx?download=true" && \
-    curl -fL -o /models/en_US-lessac-medium.onnx.json \
-      "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json?download=true" && \
-    python -c "import json; json.load(open('/models/en_US-lessac-medium.onnx.json')); print('config OK')" && \
-    test -s /models/en_US-lessac-medium.onnx
+# Varias voces en ingles (US/UK, hombre/mujer). curl -fL: -f falla si HTTP>=400
+# (no guarda paginas de error), -L sigue redirects de Git LFS de HuggingFace.
+RUN mkdir -p /models
+ARG HF="https://huggingface.co/rhasspy/piper-voices/resolve/main/en"
+RUN set -e; for V in \
+      "en_US/lessac/medium/en_US-lessac-medium" \
+      "en_US/ryan/medium/en_US-ryan-medium" \
+      "en_GB/alba/medium/en_GB-alba-medium" \
+      "en_GB/northern_english_male/medium/en_GB-northern_english_male-medium"; do \
+      name=$(basename "$V"); \
+      curl -fL -o "/models/$name.onnx"      "$HF/$V.onnx?download=true"; \
+      curl -fL -o "/models/$name.onnx.json" "$HF/$V.onnx.json?download=true"; \
+      python -c "import json,sys; json.load(open('/models/$name.onnx.json'))"; \
+      test -s "/models/$name.onnx"; \
+    done
 
 COPY server.py .
 EXPOSE 5000

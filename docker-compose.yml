@@ -9,7 +9,6 @@ services:
     environment:
       - KOKORO_URL=http://kokoro:8880
       - PIPER_URL=http://piper:5000
-      - MELO_URL=http://melotts:5000
     depends_on:
       - kokoro
       - piper
@@ -29,11 +28,3 @@ services:
     expose:
       - "5000"
 
-  # MeloTTS: TEMPORALMENTE DESACTIVADO — su build (torch/torchaudio CUDA) fallaba
-  # y tumbaba todo el deploy de compose. Pendiente arreglar/reemplazar. Reactivar
-  # quitando los comentarios cuando el Dockerfile de engines/melotts quede estable.
-  # melotts:
-  #   build: ./engines/melotts
-  #   restart: unless-stopped
-  #   expose:
-  #     - "5000"

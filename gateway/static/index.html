@@ -59,7 +59,7 @@ async function loadEngines() {
       <div class="meta">
         Voz:
         <select id="voice-${key}">
-          ${cfg.voices.map(v => `<option>${v}</option>`).join('')}
+          ${cfg.voices.map(v => `<option value="${v.id}">${v.label}</option>`).join('')}
         </select>
         &nbsp;<span class="status" id="st-${key}"></span>
       </div>
