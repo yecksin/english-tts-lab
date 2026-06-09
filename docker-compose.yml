@@ -1,6 +1,8 @@
 services:
   gateway:
-    build: ./gateway
+    build:
+      context: .                    # contexto = raíz para poder incluir AGENT.md
+      dockerfile: gateway/Dockerfile
     # En Coolify NO se publica el puerto con "ports": el proxy enruta el dominio
     # al puerto expuesto. (Para correr suelto en un VPS sin Coolify, cambia
     # "expose" por: ports: ["8080:8080"]).

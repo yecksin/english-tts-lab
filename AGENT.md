@@ -7,6 +7,8 @@ desplegado, sin instalar nada local. Pensado para **practicar listening**.
 
 - **Front (humano):** https://tts.uvingo.app/ — Yeck elige y **fija la voz por defecto** aquí.
 - **API (agente):** mismo host, endpoints bajo `/api`.
+- **Este prompt, remoto:** https://tts.uvingo.app/agent — el propio servicio sirve este
+  AGENT.md. Para cargarlo desde cualquier equipo: `curl -s https://tts.uvingo.app/agent`.
 
 ## ⚠️ Reglas de uso (el "para qué") — OBLIGATORIO
 

@@ -79,6 +79,20 @@ class DefaultReq(BaseModel):
     voice: str
 
 
+AGENT_FILE = os.path.join(os.path.dirname(__file__), "AGENT.md")
+
+
+@app.get("/agent")
+@app.get("/AGENT.md")
+def agent_prompt():
+    """Prompt remoto: instrucciones para que un agente genere voz vía esta API."""
+    try:
+        with open(AGENT_FILE, encoding="utf-8") as f:
+            return Response(content=f.read(), media_type="text/markdown; charset=utf-8")
+    except FileNotFoundError:
+        raise HTTPException(404, "AGENT.md no disponible")
+
+
 @app.get("/api/engines")
 def engines():
     return ENGINES
