@@ -3,77 +3,78 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>TTS Lab — comparador de voces (inglés)</title>
+<title>TTS Lab — elige tu voz (inglés)</title>
 <style>
   :root { --bg:#0f1115; --card:#1a1d24; --line:#2a2f3a; --txt:#e8eaed; --mut:#9aa0aa; --acc:#5b8cff; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 system-ui, sans-serif; }
-  .wrap { max-width:840px; margin:0 auto; padding:32px 20px 80px; }
+  .wrap { max-width:1000px; margin:0 auto; padding:32px 20px 80px; }
   h1 { font-size:22px; margin:0 0 4px; }
-  .sub { color:var(--mut); margin:0 0 24px; font-size:14px; }
-  textarea { width:100%; min-height:120px; background:var(--card); color:var(--txt);
+  .sub { color:var(--mut); margin:0 0 20px; font-size:14px; }
+  textarea { width:100%; min-height:110px; background:var(--card); color:var(--txt);
              border:1px solid var(--line); border-radius:10px; padding:14px; font:inherit; resize:vertical; }
-  .row { display:flex; gap:12px; align-items:center; margin:16px 0; flex-wrap:wrap; }
-  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:11px 18px;
+
+  /* dos columnas (responsive: 1 en móvil) */
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:18px; }
+  @media (max-width:680px){ .cols { grid-template-columns:1fr; } }
+
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:12px; }
+  .card h3 { margin:0; font-size:17px; }
+  .field { display:flex; flex-direction:column; gap:6px; }
+  .field label { color:var(--mut); font-size:13px; }
+  select { background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; }
+  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:12px 16px;
            font:inherit; font-weight:600; cursor:pointer; }
   button:disabled { opacity:.5; cursor:not-allowed; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:14px 0; }
-  .card h3 { margin:0 0 8px; font-size:16px; }
-  .meta { color:var(--mut); font-size:13px; margin:0 0 10px; }
-  select { background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
-  audio { width:100%; margin-top:6px; }
-  .status { font-size:13px; color:var(--mut); }
+  audio { width:100%; }
+  .status { font-size:13px; color:var(--mut); min-height:18px; }
   .err { color:#ff6b6b; }
-  label.chk { color:var(--mut); font-size:13px; display:flex; gap:6px; align-items:center; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🎧 TTS Lab — comparador de voces</h1>
-  <p class="sub">Escribe en inglés, genera el audio con cada motor y compara cuál suena mejor para practicar listening.</p>
+  <h1>🎧 TTS Lab — elige tu voz</h1>
+  <p class="sub">Escribe en inglés, elige una voz en cada modelo y genera. Se reproduce solo para que compares y elijas.</p>
 
   <textarea id="text">The quick brown fox jumps over the lazy dog. She sells seashells by the seashore.</textarea>
 
-  <div class="row">
-    <button id="go">▶ Generar y comparar (todos)</button>
-    <span id="status" class="status"></span>
-  </div>
-
-  <div id="cards"></div>
+  <div id="cols" class="cols"></div>
 </div>
 
 <script>
-const cardsEl = document.getElementById('cards');
-const statusEl = document.getElementById('status');
-const goBtn = document.getElementById('go');
-let ENGINES = {};
+const colsEl = document.getElementById('cols');
 
 async function loadEngines() {
-  ENGINES = await (await fetch('/api/engines')).json();
-  cardsEl.innerHTML = '';
+  const ENGINES = await (await fetch('/api/engines')).json();
+  colsEl.innerHTML = '';
   for (const [key, cfg] of Object.entries(ENGINES)) {
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
       <h3>${cfg.label}</h3>
-      <div class="meta">
-        Voz:
+      <div class="field">
+        <label for="voice-${key}">Voz</label>
         <select id="voice-${key}">
           ${cfg.voices.map(v => `<option value="${v.id}">${v.label}</option>`).join('')}
         </select>
-        &nbsp;<span class="status" id="st-${key}"></span>
       </div>
+      <button id="btn-${key}">▶ Generar y reproducir</button>
+      <div class="status" id="st-${key}"></div>
       <div id="player-${key}"></div>
     `;
-    cardsEl.appendChild(card);
+    colsEl.appendChild(card);
+    document.getElementById('btn-' + key).onclick = () => gen(key);
   }
 }
 
-async function genOne(key) {
+async function gen(key) {
   const text = document.getElementById('text').value;
   const voice = document.getElementById('voice-' + key).value;
+  const btn = document.getElementById('btn-' + key);
   const st = document.getElementById('st-' + key);
   const player = document.getElementById('player-' + key);
+
+  btn.disabled = true;
   st.textContent = '⏳ generando…'; st.className = 'status'; player.innerHTML = '';
   const t0 = performance.now();
   try {
@@ -88,20 +89,15 @@ async function genOne(key) {
     st.textContent = `✅ ${secs}s · ${(blob.size/1024).toFixed(0)} KB`;
     const audio = document.createElement('audio');
     audio.controls = true;
+    audio.autoplay = true;             // reproduce solo al generar
     audio.src = URL.createObjectURL(blob);
     player.appendChild(audio);
   } catch (e) {
     st.textContent = '❌ ' + e.message; st.className = 'status err';
+  } finally {
+    btn.disabled = false;
   }
 }
-
-goBtn.onclick = async () => {
-  goBtn.disabled = true;
-  statusEl.textContent = 'Generando con todos los motores…';
-  await Promise.all(Object.keys(ENGINES).map(genOne));
-  statusEl.textContent = 'Listo. Compara los reproductores ↓';
-  goBtn.disabled = false;
-};
 
 loadEngines();
 </script>
