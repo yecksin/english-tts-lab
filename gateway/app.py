@@ -82,15 +82,32 @@ class DefaultReq(BaseModel):
 AGENT_FILE = os.path.join(os.path.dirname(__file__), "AGENT.md")
 
 
+def voice_label(engine: str, voice_id: str) -> str:
+    for v in ENGINES.get(engine, {}).get("voices", []):
+        if v["id"] == voice_id:
+            return v["label"]
+    return voice_id
+
+
 @app.get("/agent")
 @app.get("/AGENT.md")
 def agent_prompt():
-    """Prompt remoto: instrucciones para que un agente genere voz vía esta API."""
+    """Prompt remoto (dinámico): instrucciones + la voz por defecto fijada AHORA."""
     try:
         with open(AGENT_FILE, encoding="utf-8") as f:
-            return Response(content=f.read(), media_type="text/markdown; charset=utf-8")
+            body = f.read()
     except FileNotFoundError:
         raise HTTPException(404, "AGENT.md no disponible")
+
+    d = read_default()
+    label = voice_label(d["engine"], d["voice"])
+    header = (
+        "> ⚡ **Voz por defecto fijada AHORA (en vivo):** "
+        f"**{d['engine']} · {label}** (`{d['voice']}`).\n"
+        "> Es la que usa `POST /api/tts` cuando envías solo `{\"text\": ...}`.\n"
+        "> (Yeck la cambia desde el front; este valor se actualiza solo.)\n\n"
+    )
+    return Response(content=header + body, media_type="text/markdown; charset=utf-8")
 
 
 @app.get("/api/engines")
