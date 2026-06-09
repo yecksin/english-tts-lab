@@ -29,7 +29,7 @@ Luego abre: `http://IP_DEL_VPS:8080`
 
 ```bash
 docker compose logs -f            # ver logs de todo
-docker compose logs -f melotts    # logs de un motor
+docker compose logs -f piper      # logs de un motor
 docker compose ps                 # estado
 docker compose down               # apagar
 ```
