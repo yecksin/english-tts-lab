@@ -13,7 +13,6 @@ services:
     depends_on:
       - kokoro
       - piper
-      - melotts
     restart: unless-stopped
 
   # Kokoro: imagen oficial CPU (API tipo OpenAI). El mejor balance calidad/peso.
@@ -30,9 +29,11 @@ services:
     expose:
       - "5000"
 
-  # MeloTTS: buena calidad en CPU, varias voces (US/BR/AU).
-  melotts:
-    build: ./engines/melotts
-    restart: unless-stopped
-    expose:
-      - "5000"
+  # MeloTTS: TEMPORALMENTE DESACTIVADO — su build (torch/torchaudio CUDA) fallaba
+  # y tumbaba todo el deploy de compose. Pendiente arreglar/reemplazar. Reactivar
+  # quitando los comentarios cuando el Dockerfile de engines/melotts quede estable.
+  # melotts:
+  #   build: ./engines/melotts
+  #   restart: unless-stopped
+  #   expose:
+  #     - "5000"

@@ -19,10 +19,12 @@ ENGINES = {
         "label": "Piper — ultraligero / rapido",
         "voices": ["lessac"],
     },
-    "melotts": {
-        "label": "MeloTTS — buena calidad en CPU",
-        "voices": ["EN-US", "EN-BR", "EN-Default", "EN-AU"],
-    },
+    # MeloTTS desactivado temporalmente (build CUDA inestable). Reactivar junto
+    # con el servicio melotts en docker-compose.yml cuando quede estable:
+    # "melotts": {
+    #     "label": "MeloTTS — buena calidad en CPU",
+    #     "voices": ["EN-US", "EN-BR", "EN-Default", "EN-AU"],
+    # },
 }
 
 app = FastAPI(title="TTS Lab")
