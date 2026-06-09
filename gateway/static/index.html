@@ -5,36 +5,44 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>TTS Lab — elige tu voz (inglés)</title>
 <style>
-  :root { --bg:#0f1115; --card:#1a1d24; --line:#2a2f3a; --txt:#e8eaed; --mut:#9aa0aa; --acc:#5b8cff; }
+  :root { --bg:#0f1115; --card:#1a1d24; --line:#2a2f3a; --txt:#e8eaed; --mut:#9aa0aa; --acc:#5b8cff; --gold:#e2b340; }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 system-ui, sans-serif; }
   .wrap { max-width:1000px; margin:0 auto; padding:32px 20px 80px; }
   h1 { font-size:22px; margin:0 0 4px; }
-  .sub { color:var(--mut); margin:0 0 20px; font-size:14px; }
+  .sub { color:var(--mut); margin:0 0 14px; font-size:14px; }
+  .default-bar { background:#20242e; border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-size:14px; margin-bottom:14px; }
+  .default-bar b { color:var(--gold); }
   textarea { width:100%; min-height:110px; background:var(--card); color:var(--txt);
              border:1px solid var(--line); border-radius:10px; padding:14px; font:inherit; resize:vertical; }
 
-  /* dos columnas (responsive: 1 en móvil) */
   .cols { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:18px; }
   @media (max-width:680px){ .cols { grid-template-columns:1fr; } }
 
-  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:18px; display:flex; flex-direction:column; gap:12px; position:relative; }
+  .card.is-default { border-color:var(--gold); }
   .card h3 { margin:0; font-size:17px; }
   .field { display:flex; flex-direction:column; gap:6px; }
   .field label { color:var(--mut); font-size:13px; }
   select { background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; }
-  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:12px 16px;
-           font:inherit; font-weight:600; cursor:pointer; }
+  button { border:0; border-radius:8px; padding:12px 16px; font:inherit; font-weight:600; cursor:pointer; }
+  .btn-gen { background:var(--acc); color:#fff; }
+  .btn-def { background:transparent; color:var(--gold); border:1px solid var(--gold); padding:9px 12px; font-size:13px; }
   button:disabled { opacity:.5; cursor:not-allowed; }
   audio { width:100%; }
   .status { font-size:13px; color:var(--mut); min-height:18px; }
   .err { color:#ff6b6b; }
+  .badge { position:absolute; top:12px; right:12px; font-size:12px; color:var(--gold); font-weight:600; display:none; }
+  .card.is-default .badge { display:block; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🎧 TTS Lab — elige tu voz</h1>
-  <p class="sub">Escribe en inglés, elige una voz en cada modelo y genera. Se reproduce solo para que compares y elijas.</p>
+  <p class="sub">Escribe en inglés, elige una voz en cada modelo y genera. Se reproduce solo para que compares.</p>
+
+  <div class="default-bar" id="default-bar">Voz por defecto: <b id="default-text">…</b>
+    &nbsp;— es la que usa la práctica de inglés cuando genera audio.</div>
 
   <textarea id="text">The quick brown fox jumps over the lazy dog. She sells seashells by the seashore.</textarea>
 
@@ -43,14 +51,33 @@
 
 <script>
 const colsEl = document.getElementById('cols');
+const defText = document.getElementById('default-text');
+let ENGINES = {};
+let CURRENT_DEFAULT = null;
 
-async function loadEngines() {
-  const ENGINES = await (await fetch('/api/engines')).json();
+function voiceLabel(engine, voiceId){
+  const v = (ENGINES[engine]?.voices || []).find(x => x.id === voiceId);
+  return v ? v.label : voiceId;
+}
+
+function paintDefault(){
+  if (!CURRENT_DEFAULT) return;
+  defText.textContent = `${ENGINES[CURRENT_DEFAULT.engine]?.label?.split(' —')[0] || CURRENT_DEFAULT.engine} · ${voiceLabel(CURRENT_DEFAULT.engine, CURRENT_DEFAULT.voice)}`;
+  for (const key of Object.keys(ENGINES)){
+    document.getElementById('card-' + key)?.classList.toggle('is-default', key === CURRENT_DEFAULT.engine);
+  }
+}
+
+async function loadAll() {
+  ENGINES = await (await fetch('/api/engines')).json();
+  CURRENT_DEFAULT = await (await fetch('/api/default-voice')).json();
   colsEl.innerHTML = '';
   for (const [key, cfg] of Object.entries(ENGINES)) {
     const card = document.createElement('div');
     card.className = 'card';
+    card.id = 'card-' + key;
     card.innerHTML = `
+      <span class="badge">★ por defecto</span>
       <h3>${cfg.label}</h3>
       <div class="field">
         <label for="voice-${key}">Voz</label>
@@ -58,13 +85,29 @@ async function loadEngines() {
           ${cfg.voices.map(v => `<option value="${v.id}">${v.label}</option>`).join('')}
         </select>
       </div>
-      <button id="btn-${key}">▶ Generar y reproducir</button>
+      <button class="btn-gen" id="btn-${key}">▶ Generar y reproducir</button>
+      <button class="btn-def" id="def-${key}">⭐ Fijar como mi voz por defecto</button>
       <div class="status" id="st-${key}"></div>
       <div id="player-${key}"></div>
     `;
     colsEl.appendChild(card);
+    // si esta columna es la default, deja su select en la voz default
+    if (CURRENT_DEFAULT && CURRENT_DEFAULT.engine === key) {
+      document.getElementById('voice-' + key).value = CURRENT_DEFAULT.voice;
+    }
     document.getElementById('btn-' + key).onclick = () => gen(key);
+    document.getElementById('def-' + key).onclick = () => setDefault(key);
   }
+  paintDefault();
+}
+
+async function setDefault(key){
+  const voice = document.getElementById('voice-' + key).value;
+  const r = await fetch('/api/default-voice', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ engine:key, voice })
+  });
+  if (r.ok){ CURRENT_DEFAULT = await r.json(); paintDefault(); }
 }
 
 async function gen(key) {
@@ -79,8 +122,7 @@ async function gen(key) {
   const t0 = performance.now();
   try {
     const resp = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ engine: key, text, voice })
     });
     if (!resp.ok) throw new Error((await resp.text()).slice(0, 160));
@@ -88,18 +130,15 @@ async function gen(key) {
     const secs = ((performance.now() - t0) / 1000).toFixed(1);
     st.textContent = `✅ ${secs}s · ${(blob.size/1024).toFixed(0)} KB`;
     const audio = document.createElement('audio');
-    audio.controls = true;
-    audio.autoplay = true;             // reproduce solo al generar
+    audio.controls = true; audio.autoplay = true;
     audio.src = URL.createObjectURL(blob);
     player.appendChild(audio);
   } catch (e) {
     st.textContent = '❌ ' + e.message; st.className = 'status err';
-  } finally {
-    btn.disabled = false;
-  }
+  } finally { btn.disabled = false; }
 }
 
-loadEngines();
+loadAll();
 </script>
 </body>
 </html>
