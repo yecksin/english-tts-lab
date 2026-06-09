@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TTS Lab — comparador de voces (inglés)</title>
+<style>
+  :root { --bg:#0f1115; --card:#1a1d24; --line:#2a2f3a; --txt:#e8eaed; --mut:#9aa0aa; --acc:#5b8cff; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:15px/1.5 system-ui, sans-serif; }
+  .wrap { max-width:840px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { color:var(--mut); margin:0 0 24px; font-size:14px; }
+  textarea { width:100%; min-height:120px; background:var(--card); color:var(--txt);
+             border:1px solid var(--line); border-radius:10px; padding:14px; font:inherit; resize:vertical; }
+  .row { display:flex; gap:12px; align-items:center; margin:16px 0; flex-wrap:wrap; }
+  button { background:var(--acc); color:#fff; border:0; border-radius:8px; padding:11px 18px;
+           font:inherit; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin:14px 0; }
+  .card h3 { margin:0 0 8px; font-size:16px; }
+  .meta { color:var(--mut); font-size:13px; margin:0 0 10px; }
+  select { background:var(--bg); color:var(--txt); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+  audio { width:100%; margin-top:6px; }
+  .status { font-size:13px; color:var(--mut); }
+  .err { color:#ff6b6b; }
+  label.chk { color:var(--mut); font-size:13px; display:flex; gap:6px; align-items:center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎧 TTS Lab — comparador de voces</h1>
+  <p class="sub">Escribe en inglés, genera el audio con cada motor y compara cuál suena mejor para practicar listening.</p>
+
+  <textarea id="text">The quick brown fox jumps over the lazy dog. She sells seashells by the seashore.</textarea>
+
+  <div class="row">
+    <button id="go">▶ Generar y comparar (todos)</button>
+    <span id="status" class="status"></span>
+  </div>
+
+  <div id="cards"></div>
+</div>
+
+<script>
+const cardsEl = document.getElementById('cards');
+const statusEl = document.getElementById('status');
+const goBtn = document.getElementById('go');
+let ENGINES = {};
+
+async function loadEngines() {
+  ENGINES = await (await fetch('/api/engines')).json();
+  cardsEl.innerHTML = '';
+  for (const [key, cfg] of Object.entries(ENGINES)) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <h3>${cfg.label}</h3>
+      <div class="meta">
+        Voz:
+        <select id="voice-${key}">
+          ${cfg.voices.map(v => `<option>${v}</option>`).join('')}
+        </select>
+        &nbsp;<span class="status" id="st-${key}"></span>
+      </div>
+      <div id="player-${key}"></div>
+    `;
+    cardsEl.appendChild(card);
+  }
+}
+
+async function genOne(key) {
+  const text = document.getElementById('text').value;
+  const voice = document.getElementById('voice-' + key).value;
+  const st = document.getElementById('st-' + key);
+  const player = document.getElementById('player-' + key);
+  st.textContent = '⏳ generando…'; st.className = 'status'; player.innerHTML = '';
+  const t0 = performance.now();
+  try {
+    const resp = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ engine: key, text, voice })
+    });
+    if (!resp.ok) throw new Error((await resp.text()).slice(0, 160));
+    const blob = await resp.blob();
+    const secs = ((performance.now() - t0) / 1000).toFixed(1);
+    st.textContent = `✅ ${secs}s · ${(blob.size/1024).toFixed(0)} KB`;
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.src = URL.createObjectURL(blob);
+    player.appendChild(audio);
+  } catch (e) {
+    st.textContent = '❌ ' + e.message; st.className = 'status err';
+  }
+}
+
+goBtn.onclick = async () => {
+  goBtn.disabled = true;
+  statusEl.textContent = 'Generando con todos los motores…';
+  await Promise.all(Object.keys(ENGINES).map(genOne));
+  statusEl.textContent = 'Listo. Compara los reproductores ↓';
+  goBtn.disabled = false;
+};
+
+loadEngines();
+</script>
+</body>
+</html>
