@@ -1,8 +1,9 @@
 import os
 import json
 import httpx
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response
+import hmac
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response, RedirectResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -49,6 +50,36 @@ ENGINES = {
 }
 
 app = FastAPI(title="TTS Lab")
+
+# Token propio (vps-dev, 2026-10-01): si TTS_TOKEN esta definido, todo menos /health lo exige.
+# Agentes/scripts: header "Authorization: Bearer <token>". Navegador: abrir una vez /?token=<token>
+# (queda en cookie httpOnly 1 año y se redirige sin el token en la URL).
+TTS_TOKEN = os.environ.get("TTS_TOKEN", "")
+
+
+def _ok(tok: str) -> bool:
+    return bool(TTS_TOKEN) and bool(tok) and hmac.compare_digest(tok, TTS_TOKEN)
+
+
+@app.middleware("http")
+async def require_token(request: Request, call_next):
+    if not TTS_TOKEN or request.url.path == "/health":
+        return await call_next(request)
+    q = request.query_params.get("token", "")
+    if q and _ok(q):
+        resp = RedirectResponse(request.url.path or "/", status_code=303)
+        resp.set_cookie("tts_token", q, max_age=31536000, httponly=True, secure=True, samesite="strict")
+        return resp
+    auth = request.headers.get("authorization", "")
+    bearer = auth[7:] if auth.lower().startswith("bearer ") else ""
+    if _ok(bearer) or _ok(request.cookies.get("tts_token", "")):
+        return await call_next(request)
+    return PlainTextResponse("unauthorized", status_code=401)
+
+
+@app.get("/health")
+def health():
+    return {"ok": True}
 
 
 def read_default() -> dict:

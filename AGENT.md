@@ -8,7 +8,8 @@ desplegado, sin instalar nada local. Pensado para **practicar listening**.
 - **Front (humano):** https://tts.uvingo.app/ — Yeck elige y **fija la voz por defecto** aquí.
 - **API (agente):** mismo host, endpoints bajo `/api`.
 - **Este prompt, remoto:** https://tts.uvingo.app/agent — el propio servicio sirve este
-  AGENT.md. Para cargarlo desde cualquier equipo: `curl -s https://tts.uvingo.app/agent`.
+  AGENT.md. Para cargarlo desde cualquier equipo: `curl -s -H "Authorization: Bearer $TTS_TOKEN" https://tts.uvingo.app/agent`.
+- **Token (desde 2026-10-01, servidor vps-dev):** todo exige `TTS_TOKEN` (en el `.env` único del cerebro / `~/Desktop/claude/tts-lab/.env`, nunca en git). Agente: header `Authorization: Bearer $TTS_TOKEN`. Navegador: abrir una vez `https://tts.uvingo.app/?token=<token>` (queda en cookie). Sin token → 401.
 
 ## ⚠️ Reglas de uso (el "para qué") — OBLIGATORIO
 
@@ -26,7 +27,9 @@ desplegado, sin instalar nada local. Pensado para **practicar listening**.
 Voz por defecto (la que Yeck fijó en el front) — **enviar solo el texto**:
 
 ```bash
+set -a; . ~/Desktop/claude/tts-lab/.env; set +a
 curl -s -X POST https://tts.uvingo.app/api/tts \
+  -H "Authorization: Bearer $TTS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"text":"<frase en inglés>"}' \
   -o /tmp/tts.wav && afplay /tmp/tts.wav
@@ -50,5 +53,5 @@ Opcional (normalmente NO se usa desde el agente, la voz la maneja Yeck en el fro
 ## Notas
 
 - Motores: **kokoro** (natural, recomendado) y **piper** (ligero). Detalle en README.md.
-- Si `/api/tts` da 502/500, el motor de esa voz está caído — revisar en Coolify
+- Si `/api/tts` da 502/500, el motor de esa voz está caído — revisar en vps-dev: `ssh vps-dev 'cd ~/apps/tts-lab && docker compose ps'`
   (ver memoria `reference_coolify_api`).

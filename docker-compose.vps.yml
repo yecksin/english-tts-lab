@@ -1,0 +1,9 @@
+# vps-dev (Hostinger, sin Coolify): publica el gateway solo en 127.0.0.1 y exige token.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.vps.yml --env-file .env up -d --build
+# .env (nunca a git): TTS_TOKEN=<token>
+services:
+  gateway:
+    ports:
+      - "127.0.0.1:8610:8080"
+    environment:
+      - TTS_TOKEN=${TTS_TOKEN}
